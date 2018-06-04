@@ -23,6 +23,7 @@
   -v /var/log:/var/log:rw \
   -v /var/lib/kubelet:/var/lib/kubelet:shared \
   -v /var/lib/cni:/var/lib/cni:shared \
+  -v /mnt:/mnt:shared \
   -v /var/run:/var/run:rw \
   {# we can run into issues with double mounting /var/lib/kubelet #}
   {# surely there's a better way to do this #}

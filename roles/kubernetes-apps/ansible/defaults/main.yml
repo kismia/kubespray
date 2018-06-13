@@ -5,6 +5,7 @@ kubednsautoscaler_version: 1.1.2
 
 # Limits for dnsmasq/kubedns apps
 dns_memory_limit: 170Mi
+dns_cpu_limit: 200m
 dns_cpu_requests: 100m
 dns_memory_requests: 70Mi
 kubedns_min_replicas: 2

@@ -32,8 +32,6 @@ spec:
       tolerations:
         - key: node-role.kubernetes.io/master
           effect: NoSchedule
-        - key: "CriticalAddonsOnly"
-          operator: "Exists"
       containers:
       - name: coredns
         image: "{{ coredns_image_repo }}:{{ coredns_image_tag }}"
@@ -45,6 +43,7 @@ spec:
           # "burstable" category so the kubelet doesn't backoff from restarting it.
           limits:
             memory: {{ dns_memory_limit }}
+            cpu: {{ dns_cpu_limit }}
           requests:
             cpu: {{ dns_cpu_requests }}
             memory: {{ dns_memory_requests }}

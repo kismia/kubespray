@@ -23,8 +23,9 @@
   -v /var/log:/var/log:rw \
   -v /var/lib/kubelet:/var/lib/kubelet:shared \
   -v /var/lib/cni:/var/lib/cni:shared \
-  -v /mnt:/mnt:shared \
+  -v /var/lib/calico:/var/lib/calico:shared \
   -v /var/run:/var/run:rw \
+  -v /mnt:/mnt:shared \
   {# we can run into issues with double mounting /var/lib/kubelet #}
   {# surely there's a better way to do this #}
   {% if '/var/lib/kubelet' not in kubelet_flexvolumes_plugins_dir %}

@@ -83,7 +83,7 @@
 - name: Persist br_netfilter module
   copy:
     dest: /etc/modules-load.d/kubespray-br_netfilter.conf
-    content: br_netfilter
+    content: "br_netfilter\n ipt_set \n ipt_rpfilter"
   when: modinfo_br_netfilter.rc == 0
 
 # kube-proxy needs net.bridge.bridge-nf-call-iptables enabled when found if br_netfilter is not a module

@@ -1,4 +1,4 @@
-apiVersion: apps/v1beta2
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: calico-kube-controllers
@@ -6,18 +6,20 @@ metadata:
   labels:
     k8s-app: calico-kube-controllers
     kubernetes.io/cluster-service: "true"
+  annotations:
+    scheduler.alpha.kubernetes.io/critical-pod: ''
 spec:
   replicas: 1
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
-      kubernetes.io/cluster-service: "true"
       k8s-app: calico-kube-controllers
   template:
     metadata:
       name: calico-kube-controllers
       namespace: kube-system
       labels:
-        kubernetes.io/cluster-service: "true"
         k8s-app: calico-kube-controllers
     spec:
       hostNetwork: true
@@ -25,8 +27,10 @@ spec:
       serviceAccountName: calico-kube-controllers
 {% endif %}
       tolerations:
-        - effect: NoSchedule
+        - key: CriticalAddonsOnly
           operator: Exists
+        - key: node-role.kubernetes.io/master
+          effect: NoSchedule
       containers:
         - name: calico-kube-controllers
           image: {{ calico_policy_image_repo }}:{{ calico_policy_image_tag }}

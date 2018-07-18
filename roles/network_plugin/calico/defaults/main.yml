@@ -4,7 +4,7 @@ nat_outgoing: true
 
 # Use IP-over-IP encapsulation across hosts
 ipip: true
-ipip_mode: always  # change to "cross-subnet" if you only want ipip encapsulation on traffic going across subnets
+ipip_mode: Always  # change to "cross-subnet" if you only want ipip encapsulation on traffic going across subnets
 
 # Set to true if you want your calico cni binaries to overwrite the
 # ones from hyperkube while leaving other cni plugins intact.
@@ -19,7 +19,7 @@ global_as_num: "64512"
 # You can set MTU value here. If left undefined or empty, it will
 # not be specified in calico CNI config, so Calico will use built-in
 # defaults. The value should be a number, not a string.
-# calico_mtu: 1500
+calico_mtu: 1480
 
 # Limits for apps
 calico_node_memory_limit: 500M
@@ -32,9 +32,9 @@ calicoctl_memory_requests: 32M
 calicoctl_cpu_requests: 50m
 
 # Enable Prometheus Metrics endpoint for felix
-calico_felix_prometheusmetricsenabled: "false"
+calico_felix_prometheusmetricsenabled: "true"
 calico_felix_prometheusmetricsport: 9091
-calico_felix_prometheusgometricsenabled: "true"
+calico_felix_prometheusgometricsenabled: "false"
 calico_felix_prometheusprocessmetricsenabled: "true"
 
 # Should calico ignore kernel's RPF check setting,

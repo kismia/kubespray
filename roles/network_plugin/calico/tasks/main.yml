@@ -91,56 +91,54 @@
   delay: 5
   run_once: true
 
-- name: Calico | Check if calico network pool has already been configured
-  command: |-
-    curl \
-      --cacert {{ etcd_cert_dir }}/ca.pem \
-      --cert {{ etcd_cert_dir}}/node-{{ inventory_hostname }}.pem \
-      --key {{ etcd_cert_dir }}/node-{{ inventory_hostname }}-key.pem \
-      {{ etcd_access_addresses.split(',') | first }}/v2/keys/calico/v1/ipam/v4/pool
-  register: calico_conf
-  retries: 4
-  delay: "{{ retry_stagger | random + 3 }}"
-  run_once: true
-  changed_when: false
-
 - name: Calico | Configure calico network pool
   shell: >
     echo '{
-    "kind": "ipPool",
-    "spec": {"disabled": false, "ipip": {"enabled": {{ ipip }}, "mode": "{{ ipip_mode }}"},
-             "nat-outgoing": {{ nat_outgoing|default(false) and not peer_with_router|default(false) }}},
-    "apiVersion": "v1",
-    "metadata": {"cidr": "{{ kube_pods_subnet }}"}
+      "kind": "IPPool",
+      "apiVersion": "projectcalico.org/v3",
+      "metadata": {
+        "name": "pods-ippool"
+      },
+      "spec": {
+        "cidr": "{{ kube_pods_subnet }}",
+        "ipipMode": "{{ ipip_mode }}",
+        "natOutgoing": {{ nat_outgoing|default(false) and not peer_with_router|default(false) }}
+      }
     }'
-    | {{ bin_dir }}/calicoctl create -f -
+    | {{ bin_dir }}/calicoctl create --skip-exists -f -
   environment:
     NO_DEFAULT_POOLS: true
   run_once: true
-  when: ("Key not found" in calico_conf.stdout or "nodes" not in calico_conf.stdout)
 
-- name: Calico | Get calico configuration from etcd
-  command: |-
-    curl \
-      --cacert {{ etcd_cert_dir }}/ca.pem \
-      --cert {{ etcd_cert_dir}}/node-{{ inventory_hostname }}.pem \
-      --key {{ etcd_cert_dir }}/node-{{ inventory_hostname }}-key.pem \
-      {{ etcd_access_addresses.split(',') | first }}/v2/keys/calico/v1/ipam/v4/pool
-  register: calico_pools_raw
-  retries: 4
-  delay: "{{ retry_stagger | random + 3 }}"
-  run_once: true
-
-- set_fact:
-    calico_pools: "{{ calico_pools_raw.stdout | from_json }}"
-  run_once: true
-
-- name: Calico | Set global as_num
-  command: "{{ bin_dir}}/calicoctl config set asNumber {{ global_as_num }}"
+- name: Calico | Set global BGP configuration
+  shell: >
+    echo '{
+      "apiVersion": "projectcalico.org/v3",
+      "kind": "BGPConfiguration",
+      "metadata": {
+        "name": "default"
+      },
+      "spec": {
+        "asNumber": {{ global_as_num }}
+      }
+    }'
+    | {{ bin_dir }}/calicoctl create --skip-exists -f -
   run_once: true
 
 - name: Calico | Disable node mesh
-  shell: "{{ bin_dir }}/calicoctl config set nodeToNodeMesh off"
+  shell: >
+    echo '{
+      "apiVersion": "projectcalico.org/v3",
+      "kind": "BGPConfiguration",
+      "metadata": {
+        "name": "default"
+      },
+      "spec": {
+        "nodeToNodeMeshEnabled": false,
+        "asNumber": {{ global_as_num }}
+      }
+    }'
+    | {{ bin_dir }}/calicoctl apply -f -
   retries: 4
   delay: "{{ retry_stagger | random + 3 }}"
   when: ((peer_with_router|default(false) or peer_with_calico_rr|default(false))
@@ -149,13 +147,19 @@
 
 - name: Calico | Configure peering with router(s)
   shell: >
-   echo '{
-   "kind": "bgpPeer",
-   "spec": {"asNumber": "{{ item.as }}"},
-   "apiVersion": "v1",
-   "metadata": {"node": "{{ inventory_hostname }}", "scope": "node", "peerIP": "{{ item.router_id }}"}
-   }'
-   | {{ bin_dir }}/calicoctl create --skip-exists -f -
+    echo '{
+      "apiVersion": "projectcalico.org/v3",
+      "kind": "BGPPeer",
+      "metadata": {
+        "name": "{{ inventory_hostname }}"
+      },
+      "spec": {
+        "node": "{{ inventory_hostname }}",
+        "peerIP": "{{ item.router_id }}",
+        "asNumber": "{{ item.as }}"
+      }
+    }'
+    | {{ bin_dir }}/calicoctl create --skip-exists -f -
   retries: 4
   delay: "{{ retry_stagger | random + 3 }}"
   with_items: "{{ peers|default([]) }}"
@@ -164,12 +168,16 @@
 - name: Calico | Configure peering with route reflectors
   shell: >
    echo '{
-   "kind": "bgpPeer",
-   "spec": {"asNumber": "{{ local_as | default(global_as_num)}}"},
-   "apiVersion": "v1",
-   "metadata": {"node": "{{ inventory_hostname }}",
-     "scope": "node",
-     "peerIP": "{{ hostvars[item]["calico_rr_ip"]|default(hostvars[item]["ip"])|default(hostvars[item]["ansible_default_ipv4"]["address"]) }}"}
+    "apiVersion": "projectcalico.org/v3",
+    "kind": "BGPPeer",
+    "metadata": {
+      "name": "{{ inventory_hostname }}"
+    },
+    "spec": {
+      "node": "{{ inventory_hostname }}",
+      "peerIP": "{{ hostvars[item]["calico_rr_ip"]|default(hostvars[item]["ip"])|default(hostvars[item]["ansible_default_ipv4"]["address"]) }}",
+      "asNumber": "{{ local_as | default(global_as_num)}}"
+    }
    }'
    | {{ bin_dir }}/calicoctl create --skip-exists -f -
   retries: 4

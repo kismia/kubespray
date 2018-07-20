@@ -20,6 +20,8 @@ spec:
       annotations:
         scheduler.alpha.kubernetes.io/critical-pod: ''
         kubespray.etcd-cert/serial: "{{ etcd_client_cert_serial }}"
+        prometheus.io/port": "9091"
+        prometheus.io/scrape": "true"
     spec:
       hostNetwork: true
 {% if rbac_enabled %}
